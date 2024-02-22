@@ -1,0 +1,4 @@
+output/
+data/
+models/
+res50_256_final.pth.tar
