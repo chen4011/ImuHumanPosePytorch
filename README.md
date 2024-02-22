@@ -29,38 +29,54 @@ To reproduce our results in the paper, please download the trained models from [
 
 ## Testing
 ### Testing *ORN*
-```
-python run/pose2d/valid.py \
---cfg experiments-local/totalcapture/res50_256_orn.yaml \
---model-file <path-to-your-download>/res50_256_final.pth.tar \
---gpus 0 --workers 1 \
---dataDir . --logDir log --modelDir output 
-```
+1. 需要額外安裝 charset_normalizer 的 site package，`pip install charset_normalizer` 
+2. 在終端機執行以下命令，記得確認每一個要用到的檔案如以下位置放置
+    ```
+    python run/pose2d/valid.py \
+    --cfg experiments-local/totalcapture/res50_256_orn.yaml \
+    --model-file <path-to-your-download>/res50_256_final.pth.tar \
+    --gpus 0 --workers 1 \
+    --dataDir . --logDir log --modelDir output 
+    ```
+3. 得到結果在 output\totalcapture\multiview_pose_resnet_50\res50_256_orn
 
 ### Testing *ORPSM*
-```
-python run/pose3d/estimate.py \
---cfg experiments-local/totalcapture/res50_256_orn.yaml \
---withIMU 1 \
---dataDir . --logDir log --modelDir output
-```
+1. 需要額外安裝 sklearn 的 site package， `pip install scikit-learn`
+2. 在終端機執行以下命令，記得確認每一個要用到的檔案如以下位置放置
+    
+    ```
+    python run/pose3d/estimate.py \
+    --cfg experiments-local/totalcapture/res50_256_orn.yaml \
+    --withIMU 1 \
+    --dataDir . --logDir log --modelDir output
+    ```
+    
+3. 得到結果在 `output\totalcapture\multiview_pose_resnet_50\res50_256_orn`
 
 ### Testing Baseline (SN + PSM)
-```
-python run/pose2d/valid.py \
---cfg experiments-local/totalcapture/res50_256_nofusion.yaml \
---model-file <path-to-your-download>/res50_256_final.pth.tar \
---gpus 0 --workers 1 \
---dataDir . --logDir log --modelDir output 
-```
+1. 在終端機執行以下命令，記得確認每一個要用到的檔案如以下位置放置
+    
+    ```
+    python run/pose2d/valid.py \
+    --cfg experiments-local/totalcapture/res50_256_nofusion.yaml \
+    --model-file /mnt/d/exp_ImuHumanPosePytorch/res50_256_final.pth.tar \
+    --gpus 0 --workers 1 \
+    --dataDir . --logDir log --modelDir output
+    ```
+    
+2. 得到結果在 `output\totalcapture\multiview_pose_resnet_50\res50_256_nofusion`
 
 Then,
-```
-python run/pose3d/estimate.py \
---cfg experiments-local/totalcapture/res50_256_nofusion.yaml \
---withIMU 0 \
---dataDir . --logDir log --modelDir output
-```
+1. 在終端機執行以下命令，記得確認每一個要用到的檔案如以下位置放置
+    
+    ```
+    python run/pose3d/estimate.py \
+    --cfg experiments-local/totalcapture/res50_256_nofusion.yaml \
+    --withIMU 0 \
+    --dataDir . --logDir log --modelDir output
+    ```
+    
+2. 得到結果在 `output\totalcapture\multiview_pose_resnet_50\res50_256_nofusion`
 
 ## Training
 Since our ORN and ORPSM has no learnable parameters, it can be conveniently appended to any 2D pose estimator. Thus training the SN backbone is sufficient.
