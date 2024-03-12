@@ -38,7 +38,7 @@ To reproduce our results in the paper, please download the trained models from [
     --gpus 0 --workers 1 \
     --dataDir . --logDir log --modelDir output 
     ```
-3. 得到結果在 output\totalcapture\multiview_pose_resnet_50\res50_256_orn
+3. 得到結果在 `output\totalcapture\multiview_pose_resnet_50\res50_256_orn`
 
 ### Testing *ORPSM*
 1. 需要額外安裝 sklearn 的 site package， `pip install scikit-learn`
