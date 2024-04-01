@@ -146,6 +146,9 @@ def validate(config, loader, dataset, model, criterion, output_dir,
     with torch.no_grad():
         end = time.time()
         for i, (input_, target_, weight_, meta_) in enumerate(loader):
+            # print('input:', input_)
+            # with open(os.path.join(output_dir, 'input.txt'), 'a+') as f:
+            #     f.write('input:' + str(input_) + '\n')
             batch = input_.shape[0]
             output, extra = model(input_, **meta_)
 

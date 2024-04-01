@@ -1,7 +1,5 @@
 # Fusing Wearable IMUs with Multi-View Images for Human Pose Estimation: A Geometric Approach
 
-[Paper](https://www.chunyuwang.org/img/sensor_pose.pdf),
-
 ## Installation
 1. Clone this repo, and we'll call the directory that you cloned as ${POSE_ROOT}
 2. Install dependencies.

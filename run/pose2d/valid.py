@@ -145,6 +145,12 @@ def main():
             transforms.ToTensor(),
             normalize,
         ]))
+    # valid_dataset = dataset.totalcapture(
+    #     config, config.DATASET.TEST_SUBSET, False,
+    #     transforms.Compose([
+    #         transforms.ToTensor(),
+    #         normalize,
+    #     ]))
     valid_loader = torch.utils.data.DataLoader(
         valid_dataset,
         batch_size=config.TEST.BATCH_SIZE * len(gpus),
