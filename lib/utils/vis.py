@@ -24,6 +24,8 @@ def save_batch_image_with_joints(batch_image,
                                  file_name,
                                  nrow=8,
                                  padding=2):
+    # 建立影像網格，並在影像上標記關節位置
+    # 使用 torchvision.utils.make_grid 函數建立影像網格，然後迭代關節以使用 cv2.circle 函數將它們繪製在影像上。 然後圖像將保存到指定的文件中。
     '''
     batch_image: [batch_size, channel, height, width]
     batch_joints: [batch_size, num_joints, 3],
@@ -58,6 +60,8 @@ def save_batch_image_with_joints(batch_image,
 
 
 def save_batch_heatmaps(batch_image, batch_heatmaps, file_name, normalize=True):
+    # 建立熱圖網格，這些熱圖是資料的圖形表示，其中各個值表示為顏色
+    # 如果標準化參數設為 True，則會標準化影像。 然後，它創建一個空的網格圖像，並用熱圖和原始圖像填充它。 使用 cv2.applyColorMap 函數對熱圖進行著色，並在影像上標記關節位置。 然後網格圖像被保存到指定的檔案中。
     '''
     batch_image: [batch_size, channel, height, width]
     batch_heatmaps: ['batch_size, num_joints, height, width]

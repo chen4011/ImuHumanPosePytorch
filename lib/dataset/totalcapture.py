@@ -47,9 +47,11 @@ class TotalCaptureDataset(JointsDataset):
         #     self.selected_cam = [0, 2, 4, 6]  # list rather than tuple
 
         self.selected_cam = cfg.SELECTED_VIEWS
+        self.choose_skeleton = cfg.CHOOSE_SKELETON
+        # print('=>selected_cam:', self.selected_cam)
 
-        selected_cam_string = ''.join([str(c+1) for c in self.selected_cam])
-        self.u2a_mapping = super().get_mapping()
+        selected_cam_string = ''.join([str(c+1) for c in self.selected_cam])    # c+1 根本在搞
+        self.u2a_mapping = super().get_mapping()    # 建立關節之間的映射，將關節的表示從實際格式轉換為統一格式
         grouping_db_pickle_file = osp.join(self.root, 'totalcapture', 'quickload',
                                            'totalcapture_quickload_{}_cam_{}.pkl'
                                            .format(image_set, selected_cam_string))
@@ -59,18 +61,24 @@ class TotalCaptureDataset(JointsDataset):
                 self.grouping = grouping_db['grouping']
                 self.db = grouping_db['db']
         else:
+            # print('=>else')
             anno_file = osp.join(self.root, 'totalcapture', 'annot',
                                  'totalcapture_{}.pkl'.format(image_set))
+            # anno_file = osp.join(self.root, 'totalcapture', 'annot',
+            #                      'totalcapture_{}_{}.pkl'.format(image_set, self.choose_skeleton))
+            print('=>anno_file:', anno_file)
             self.db = self.load_db(anno_file)
-            super().do_mapping()
-            self.grouping = self.get_group(self.db)
+            super().do_mapping()    # 輸入 .pkl 文件的 joint_2d、joint_vis 兩個 vicon 投影到影像上的資料，可能要做為真實答案
+            self.grouping = self.get_group(self.db) # 應該是把不同視角同一時刻的資料分組在一起
+            # print('=>grouping:', self.grouping)
             grouping_db_to_dump = {'grouping': self.grouping, 'db': self.db}  # dump full group
             with open(grouping_db_pickle_file, 'wb') as f:
                 pickle.dump(grouping_db_to_dump, f)
         if self.is_train:
             self.grouping = self.grouping[::1]
         else:
-            self.grouping = self.grouping[::16]
+            self.grouping = self.grouping[::16] # 每 16 個取一個
+            # print('=>grouping:', self.grouping)
 
         self.group_size = len(self.grouping)
         # use HumanBody.imubone as bone_vectors dict key
@@ -96,12 +104,14 @@ class TotalCaptureDataset(JointsDataset):
     def get_group(self, db):
         grouping = {}
         nitems = len(db)
+        # print('=>nitems:', nitems)
         for i in range(nitems):
             keystr = self.get_key_str(db[i])
             camera_id = db[i]['camera_id']
             if keystr not in grouping:
                 grouping[keystr] = [-1, -1, -1, -1, -1, -1, -1, -1]
             grouping[keystr][camera_id] = i
+        # print('=>grouping:', grouping)
 
         filtered_grouping = []
         for _, v in grouping.items():
@@ -130,6 +140,10 @@ class TotalCaptureDataset(JointsDataset):
             target.append(t)
             weight.append(w)
             meta.append(m)
+            
+            # store the dataset for debug
+            # with open(osp.join(self.root,'valid_dataset.txt'), 'a+') as f:
+            #     f.write('input: {}\ntarget: {}\nweight: {}\nmeta: {}\n\n'.format(i, t, w, m))
 
         return input, target, weight, meta
 

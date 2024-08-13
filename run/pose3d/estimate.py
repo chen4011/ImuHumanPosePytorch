@@ -50,6 +50,7 @@ def parse_args():
 
 
 def main():
+    # 讀取參數和設定 logger
     args = parse_args()
 
     logger, final_output_dir, tb_log_dir = create_logger(
@@ -72,9 +73,10 @@ def main():
     all_heatmaps = h5py.File(prediction_path)['heatmaps']
     all_heatmaps = all_heatmaps[()]  # load all heatmaps into ram to avoid a h5 multi-threading bug
 
-    pairwise_file = os.path.join(config.DATA_DIR, config.PICT_STRUCT.PAIRWISE_FILE)
+    pairwise_file = os.path.join(config.DATA_DIR, config.PICT_STRUCT.PAIRWISE_FILE) # PAIRWISE_FILE: 'data/pict/pairwise_totalcapture.pkl'
     with open(pairwise_file, 'rb') as f:
         pairwise = pickle.load(f)['pairwise_constrain']
+    # logger.info(pairwise)
     if config.DATASET.TRAIN_DATASET == 'multiview_h36m':
         # convert sparse mat to int64 mat
         no_sparse_pairwise = dict()
@@ -119,6 +121,7 @@ def main():
         orient_grid_file = os.path.join(config.DATA_DIR, 'data/pict/orient_grid.npy')
         with open(orient_grid_file, 'rb') as f:
             orient_pairwise = np.load(f)
+        # logger.info('orient_pairwise shape: {}'.format(orient_pairwise))
         orient_pairwise_tensor = torch.as_tensor(orient_pairwise, dtype=torch.float32).to(dev)
 
     rpsm_nn_kwargs = dict()
@@ -139,6 +142,7 @@ def main():
     p3dpose = []
     p3dpose_align = []
     p3dpose_gt = []
+    final_pose = []
     for i, items in tqdm(enumerate(heatmap_loader)):
         input_params_all_devices = []
         for item in items:
@@ -150,8 +154,10 @@ def main():
             cameras = item['cameras']
             limb_length = item['limb_length']
             bone_vectors = item['bone_vectors']
+            # print('=>bone_vectors:', bone_vectors)
 
             grid_center = poses[0]
+            # print('grid_center:', grid_center)
 
             input_params = dict()
             input_params['cams'] = cameras
@@ -195,11 +201,16 @@ def main():
             p3dpose_gt.append(gt_poses)
 
             metric = get_one_grouping_metric(datum, prediction, results_df)
+            # logger.info('prediction:',prediction)
             mpjpe = metric['mpjpe']
             mpjpes.append(mpjpe)
 
             logger.info('idx_{:0>6d} sub_{} act_{} subact_{} mpjpe is {}'.format(
                 datum['image_id'], datum['subject'], datum['action'], datum['subaction'], mpjpe))
+            final_pose.append(prediction)
+            # f.write('idx_{:0>6d} sub_{} act_{} subact_{} 3dpose is \n'.format(
+            #     datum['image_id'], datum['subject'], datum['action'], datum['subaction']))
+            # f.write(format(np.array(prediction)) + '\n')
 
             if b_align_mpjpe:
                 d, Z, tform = pose_utils.procrustes(gt_poses, prediction)
@@ -210,6 +221,8 @@ def main():
                 aligned_mpjpes.append(aligned_mpjpe)
                 logger.info(aligned_mpjpe)
                 p3dpose_align.append(Z)
+    with open(os.path.join(final_output_dir, '3dpose_prediction_triangulation.txt'), 'w') as f:
+        f.write('\n'.join(map(str, final_pose)))
 
     logger.info('avg mpjpes on {} val samples is: {}'.format(len(grouping), np.mean(mpjpes)))
     flag_orient = 'with' if do_bone_vectors else 'without'

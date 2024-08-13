@@ -16,6 +16,7 @@ def totalcapture_collate(data):
         selected_bones = [3, 4, 5, 6, 11, 12, 13, 14]  # todo maybe write to dataset definition
     h_hm = data[0][1][0].shape[1]
     w_hm = data[0][1][0].shape[2]
+    # print('h_hm, w_hm', h_hm, w_hm)
 
     inputs = []
     targets = []
@@ -64,8 +65,11 @@ def totalcapture_collate(data):
 
         # affine transform between origin img and heatmap
         aff_tran_3x3 = torch.eye(3, dtype=torch.float32)
+            # 使用 PyTorch 的 torch.eye 函數創建了一個 3x3 的單位矩陣，並將其儲存到 aff_tran_3x3 變數中。單位矩陣是一種方陣，其主對角線上的元素都是 1，其餘元素都是 0
         aff_tran = cameras_utils.get_affine_transform(m['center'], m['scale'], patch_size=(h_hm, w_hm), inv=0)
+            # 調用 cameras_utils.get_affine_transform 函數來計算仿射變換矩陣。該函數需要四個參數：中心點 m['center']、縮放因子 m['scale']、輸出圖像的大小 (h_hm, w_hm) 和一個表示是否需要計算逆變換的標誌 inv。這裡 inv=0 表示我們需要的是正向變換
         aff_tran_3x3[0:2] = torch.as_tensor(aff_tran, dtype=torch.float32)
+            # 將計算出的 2x3 的仿射變換矩陣 aff_tran 轉換為 32 位浮點數類型，並將其儲存到 aff_tran_3x3 的前兩行。這樣 aff_tran_3x3 就變成了一個 3x3 的仿射變換矩陣，可以用於對齊圖像
         inv_aff_tran_3x3 = torch.eye(3, dtype=torch.float32)
         inv_aff_tran = cameras_utils.get_affine_transform(m['center'], m['scale'], patch_size=(h_hm, w_hm), inv=1)
         inv_aff_tran_3x3[0:2] = torch.as_tensor(inv_aff_tran, dtype=torch.float32)

@@ -25,13 +25,13 @@ class JointsDataset(Dataset):
         self.is_train = is_train
         self.subset = subset
 
-        self.root = cfg.DATASET.ROOT
-        self.data_format = cfg.DATASET.DATA_FORMAT
-        self.scale_factor = cfg.DATASET.SCALE_FACTOR
-        self.rotation_factor = cfg.DATASET.ROT_FACTOR
-        self.image_size = cfg.NETWORK.IMAGE_SIZE
-        self.heatmap_size = cfg.NETWORK.HEATMAP_SIZE
-        self.sigma = cfg.NETWORK.SIGMA
+        self.root = cfg.DATASET.ROOT    # 設置數據集的根目錄，data
+        self.data_format = cfg.DATASET.DATA_FORMAT  # 設置數據集的格式，zip
+        self.scale_factor = cfg.DATASET.SCALE_FACTOR    # 設置縮放因子，0
+        self.rotation_factor = cfg.DATASET.ROT_FACTOR   # 設置旋轉因子，0
+        self.image_size = cfg.NETWORK.IMAGE_SIZE    # 設置圖像的尺寸，256*256
+        self.heatmap_size = cfg.NETWORK.HEATMAP_SIZE    # 設置熱圖的尺寸，64*64
+        self.sigma = cfg.NETWORK.SIGMA  # 設置 sigma，2
         self.transform = transform
         self.db = []
 
@@ -78,19 +78,27 @@ class JointsDataset(Dataset):
 
 
     def get_mapping(self):
+        # 建立關節之間的映射，將關節的表示從實際格式轉換為統一格式
         union_keys = list(self.union_joints.keys())
         union_values = list(self.union_joints.values())
 
         mapping = {k: '*' for k in union_keys}
+        # print('=>mapping:', mapping)
         for k, v in self.actual_joints.items():
+            # print('=>k:', k, '=>v', v)
             idx = union_values.index(v)
+            # print('=>idx:', idx)
             key = union_keys[idx]
+            # print('=>key:', key)
             mapping[key] = k
+            # print('=>mapping:', mapping)
         return mapping
 
     def do_mapping(self):
         mapping = self.u2a_mapping
+        # print('=>mapping:', mapping)
         for item in self.db:
+            # print('=>item:', item)
             joints = item['joints_2d']
             joints_vis = item['joints_vis']
 
@@ -116,7 +124,7 @@ class JointsDataset(Dataset):
         return len(self.db)
 
     def __getitem__(self, idx, source='h36m', **kwargs):
-        db_rec = copy.deepcopy(self.db[idx])
+        db_rec = copy.deepcopy(self.db[idx])    # 建立記錄的深層副本
 
         image_dir = 'images.zip@' if self.data_format == 'zip' else ''
         image_file = osp.join(self.root, db_rec['source'], image_dir, 'images',
@@ -143,16 +151,18 @@ class JointsDataset(Dataset):
             rotation = np.clip(np.random.randn() * rf, -rf * 2, rf * 2) \
                 if random.random() <= 0.6 else 0
 
-        trans = get_affine_transform(center, scale, rotation, self.image_size)
+        trans = get_affine_transform(center, scale, rotation, self.image_size)  # 計算仿射變換矩陣
+
+        # 將圖像進行仿射變換
         input = cv2.warpAffine(
             data_numpy,
             trans, (int(self.image_size[0]), int(self.image_size[1])),
             flags=cv2.INTER_LINEAR)
 
-        if self.transform:
+        if self.transform:  # 如果有transform，則對圖像進行轉換
             input = self.transform(input)
 
-        for i in range(self.num_joints):
+        for i in range(self.num_joints):    # 對所有關節進行仿射變換，如果關節變換到影像外部的位置，則其可見性將設為 0
             if joints_vis[i, 0] > 0.0:
                 joints[i, 0:2] = affine_transform(joints[i, 0:2], trans)
                 if (np.min(joints[i, :2]) < 0 or
@@ -165,6 +175,7 @@ class JointsDataset(Dataset):
         target = torch.from_numpy(target)
         target_weight = torch.from_numpy(target_weight)
 
+        # 儲存有關記錄的元資料
         meta = {
             'scale': scale,
             'center': center,

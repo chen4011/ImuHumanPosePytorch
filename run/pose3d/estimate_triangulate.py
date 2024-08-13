@@ -107,75 +107,79 @@ def main():
     # modify df definition if add extra metrics to report
     results_df = pandas.DataFrame(columns=['imgid','subject', 'action', 'subaction', 'mpjpe'] + body_joints)
     # for i, items in tqdm(enumerate(heatmap_loader)):
-    for i, items in enumerate(heatmap_loader):
-        input_params_all_devices = []
-        for item in items:
-            # item = items[0]
-            heatmaps = item['heatmaps']
-            datum = item['datum']
-            boxes = item['boxes']
-            poses = item['poses']
-            cameras = item['cameras']
-            limb_length = item['limb_length']
-            bone_vectors = item['bone_vectors']
+    with open(os.path.join(final_output_dir, '3dpose_prediction_triangulation.txt'), 'w') as f:
+        for i, items in enumerate(heatmap_loader):
+            input_params_all_devices = []
+            for item in items:
+                # item = items[0]
+                heatmaps = item['heatmaps']
+                datum = item['datum']
+                boxes = item['boxes']
+                poses = item['poses']
+                cameras = item['cameras']
+                limb_length = item['limb_length']
+                bone_vectors = item['bone_vectors']
 
-        # preds = []
-        # maxvs = []
-        nview = heatmaps.shape[0]
-        njoints = heatmaps.shape[1]
-        # for idv in range(nview):  # nview
-        #     hm = heatmaps[idv]
-        #     center = boxes[idv]['center']
-        #     scale = boxes[idv]['scale']
-        #     pred, maxv = get_final_preds(config, hm, center, scale)
-        #     preds.append(pred)
-        #     maxvs.append(maxv)
+            # preds = []
+            # maxvs = []
+            nview = heatmaps.shape[0]
+            njoints = heatmaps.shape[1]
+            # for idv in range(nview):  # nview
+            #     hm = heatmaps[idv]
+            #     center = boxes[idv]['center']
+            #     scale = boxes[idv]['scale']
+            #     pred, maxv = get_final_preds(config, hm, center, scale)
+            #     preds.append(pred)
+            #     maxvs.append(maxv)
 
-        centers = [boxes[i]['center'] for i in range(nview)]
-        scales = [boxes[i]['scale'] for i in range(nview)]
-        preds, maxvs = get_final_preds(config, heatmaps, centers, scales)
+            centers = [boxes[i]['center'] for i in range(nview)]
+            scales = [boxes[i]['scale'] for i in range(nview)]
+            preds, maxvs = get_final_preds(config, heatmaps, centers, scales)
 
-        # obtain joint vis from maxvs by a threshold
-        vis_thresh = 0.3
-        joints_vis = np.greater(maxvs, vis_thresh)
+            # obtain joint vis from maxvs by a threshold
+            vis_thresh = 0.3
+            joints_vis = np.greater(maxvs, vis_thresh)
 
-        # if not np.all(joints_vis):  # for debug
-        #     print(maxvs)
+            # if not np.all(joints_vis):  # for debug
+            #     print(maxvs)
 
-        # check if at least two views available for each joints
-        valid_views = np.swapaxes(joints_vis, 0, 1).sum(axis=1).reshape(-1)
-        # print(valid_views)
-        if np.any(valid_views < 2):
-            # print(maxvs)
-            maxvs_t = np.swapaxes(maxvs, 0, 1).reshape(njoints, nview)  # (njoints, nview)
-            sorted_index = np.argsort(maxvs_t, axis=1)
-            top2_index = sorted_index[:, ::-1][:, :2]  # large to fewer, select top 2
-            top2_vis = np.zeros((njoints, nview), dtype=np.bool)
-            for j in range(njoints):
-                for ind_view in top2_index[j]:
-                    top2_vis[j, ind_view] = True
-            top2_vis_reshape = np.transpose(top2_vis).reshape(nview, njoints, 1)
-            joints_vis = np.logical_or(joints_vis, top2_vis_reshape)
-            logger.info('idx_{:0>6d} sub_{} act_{} subact_{} has some joints whose valid view < 2'.format(
-                datum['image_id'], datum['subject'], datum['action'], datum['subaction']))
+            # check if at least two views available for each joints
+            valid_views = np.swapaxes(joints_vis, 0, 1).sum(axis=1).reshape(-1)
+            # print(valid_views)
+            if np.any(valid_views < 2):
+                # print(maxvs)
+                maxvs_t = np.swapaxes(maxvs, 0, 1).reshape(njoints, nview)  # (njoints, nview)
+                sorted_index = np.argsort(maxvs_t, axis=1)
+                top2_index = sorted_index[:, ::-1][:, :2]  # large to fewer, select top 2
+                top2_vis = np.zeros((njoints, nview), dtype=np.bool_)
+                for j in range(njoints):
+                    for ind_view in top2_index[j]:
+                        top2_vis[j, ind_view] = True
+                top2_vis_reshape = np.transpose(top2_vis).reshape(nview, njoints, 1)
+                joints_vis = np.logical_or(joints_vis, top2_vis_reshape)
+                logger.info('idx_{:0>6d} sub_{} act_{} subact_{} has some joints whose valid view < 2'.format(
+                    datum['image_id'], datum['subject'], datum['action'], datum['subaction']))
 
-        poses2ds = np.array(preds)
-        pose3d = np.squeeze(triangulate_poses(cameras, poses2ds, joints_vis))
+            poses2ds = np.array(preds)
+            pose3d = np.squeeze(triangulate_poses(cameras, poses2ds, joints_vis))
 
-        # for idx_datum, prediction in enumerate(outputs_cat):
-        datum = items[0]['datum']
-        # gt_poses = datum['joints_gt']
-        # mpjpe = np.mean(np.sqrt(np.sum((prediction - gt_poses) ** 2, axis=1)))
+            # for idx_datum, prediction in enumerate(outputs_cat):
+            datum = items[0]['datum']
+            # gt_poses = datum['joints_gt']
+            # mpjpe = np.mean(np.sqrt(np.sum((prediction - gt_poses) ** 2, axis=1)))
 
-        metric = get_one_grouping_metric(datum, pose3d, results_df)
-        mpjpe = metric['mpjpe']
-        mpjpes.append(mpjpe)
+            metric = get_one_grouping_metric(datum, pose3d, results_df)
+            mpjpe = metric['mpjpe']
+            mpjpes.append(mpjpe)
 
-        logger.info('idx_{:0>6d} sub_{} act_{} subact_{} mpjpe is {}'.format(
-            datum['image_id'], datum['subject'], datum['action'], datum['subaction'], mpjpe))
-            # logger.info(prediction[0], )
+            logger.info('idx_{:0>6d} sub_{} act_{} subact_{} mpjpe is {}'.format(
+                datum['image_id'], datum['subject'], datum['action'], datum['subaction'], mpjpe))
+                # logger.info(prediction[0], )
+            f.write('idx_{:0>6d} sub_{} act_{} subact_{} 3dpose is \n'.format(
+                        datum['image_id'], datum['subject'], datum['action'], datum['subaction']))
+            f.write(format(np.array(pose3d)) + '\n')
 
-        # prediction = rpsm_nn(**input_params)
+            # prediction = rpsm_nn(**input_params)
 
     logger.info('avg mpjpes on {} val samples is: {}'.format(len(grouping), np.mean(mpjpes)))
     # flag_orient = 'with' if do_bone_vectors else 'without'

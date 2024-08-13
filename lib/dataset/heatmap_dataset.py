@@ -42,6 +42,7 @@ class HeatmapDataset(Dataset):
             camera = datum['camera']
             cameras.append(camera)
             poses.append(datum['joints_gt'])
+            # print('poses_gt:', poses)
             box = dict()
             box['scale'] = np.array(datum['scale'])
             box['center'] = np.array(datum['center'])
@@ -50,6 +51,7 @@ class HeatmapDataset(Dataset):
         heatmaps = np.array(heatmaps)
 
         poses = poses[0]  # 4 poses are identical
+        # print('poses:', poses)
         bone_vec_tc = datum['bone_vec']
         # child - parent, parent is more close to root
 

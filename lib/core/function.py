@@ -128,16 +128,18 @@ def train(config, data, model, criterion, optim, epoch, output_dir,
 
 def validate(config, loader, dataset, model, criterion, output_dir,
              writer_dict=None, **kwargs):
-    model.eval()
+    model.eval()    # 將模型設置為評估模式
+
+    # AverageMeter 計算並儲存給定指標的平均值和當前值，用於追蹤驗證過程中的批次時間、損失和平均準確性
     batch_time = AverageMeter()
     losses = AverageMeter()
     avg_acc = AverageMeter()
 
     nview = len(config.SELECTED_VIEWS)
     nsamples = len(dataset) * nview
-    njoints = config.NETWORK.NUM_JOINTS
-    height = int(config.NETWORK.HEATMAP_SIZE[0])
-    width = int(config.NETWORK.HEATMAP_SIZE[1])
+    njoints = config.NETWORK.NUM_JOINTS # 20
+    height = int(config.NETWORK.HEATMAP_SIZE[0])    # 64
+    width = int(config.NETWORK.HEATMAP_SIZE[1])    # 64
     all_preds = np.zeros((nsamples, njoints, 3), dtype=np.float32)
     all_heatmaps = np.zeros(
         (nsamples, njoints, height, width), dtype=np.float32)
@@ -146,12 +148,15 @@ def validate(config, loader, dataset, model, criterion, output_dir,
     with torch.no_grad():
         end = time.time()
         for i, (input_, target_, weight_, meta_) in enumerate(loader):
-            # print('input:', input_)
-            # with open(os.path.join(output_dir, 'input.txt'), 'a+') as f:
-            #     f.write('input:' + str(input_) + '\n')
+            # input_: 4D tensor, [batch_size, 3, 256, 256]，輸入仿射變換後的圖像
+            # target_: 4D tensor, [batch_size, 17, 64, 64]，目標熱圖(應該是 vicon 的 2D 關節位置)
+            # weight_: 4D tensor, [batch_size, 17, 64, 64]，目標熱圖的權重
+            # meta_: dict，包含圖像的元數據
             batch = input_.shape[0]
-            output, extra = model(input_, **meta_)
+            output, extra = model(input_, **meta_)  # 輸出模型預測的熱圖，output = fused_hms + origin_hms
+            # print('=>extra', extra)
 
+            # 合併前兩個維度
             input = merge_first_two_dims(input_)
             target = merge_first_two_dims(target_)
             weight = merge_first_two_dims(weight_)
@@ -159,27 +164,37 @@ def validate(config, loader, dataset, model, criterion, output_dir,
             for kk in meta_:
                 meta[kk] = merge_first_two_dims(meta_[kk])
 
+            # 計算損失
             target_cuda = target.cuda()
             weight_cuda = weight.cuda()
             loss = criterion(output, target_cuda, weight_cuda)
 
+            # 更新平均損失
             nimgs = input.size()[0]
             losses.update(loss.item(), nimgs)
 
+            # 計算準確性
             _, acc, cnt, pre = accuracy(output.detach().cpu().numpy(), target.detach().cpu().numpy(), thr=0.083)
+                # 將 output 和 target 從計算圖中分離出來，將它們轉移到 CPU 上，並將它們轉換為 NumPy 陣列。然後，它將這些陣列和閾值 0.083 作為參數傳遞給 accuracy 函數，並將返回的結果解構為四部分
+            # 更新平均準確性
             avg_acc.update(acc, cnt)
 
+            # 更新批次時間
             batch_time.update(time.time() - end)
             end = time.time()
 
+            # 獲取最終預測的關節位置
             pred, maxval = get_final_preds(config,
                                            output.clone().cpu().numpy(),
                                            meta['center'],
                                            meta['scale'])
 
+            # 將預測的關節位置和最大值合併
             pred = pred[:, :, 0:2]
             pred = np.concatenate((pred, maxval), axis=2)
+            # 將 pred 的第三個維度切片為 0:2，然後將 pred 和 maxval 沿著第三個維度連接
 
+            # 將預測的關節位置和熱圖保存到 all_preds 和 all_heatmaps 中
             all_preds[idx:idx + nimgs] = pred
             all_heatmaps[idx:idx + nimgs] = output.cpu().numpy()
             # image_only_heatmaps[idx:idx + nimgs] = img_detected.cpu().numpy()
@@ -240,7 +255,7 @@ def validate(config, loader, dataset, model, criterion, output_dir,
         a = list(a2u.keys())
         u = np.array(list(a2u.values()))
 
-        save_file = config.TEST.HEATMAP_LOCATION_FILE
+        save_file = config.TEST.HEATMAP_LOCATION_FILE   # 'predicted_heatmaps.h5'
         file_name = os.path.join(output_dir, save_file)
         file = h5py.File(file_name, 'w')
         file['heatmaps'] = all_heatmaps[:, u, :, :]

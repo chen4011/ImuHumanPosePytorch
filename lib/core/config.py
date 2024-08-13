@@ -33,8 +33,8 @@ config.CUDNN.ENABLED = True
 config.NETWORK = edict()
 config.NETWORK.PRETRAINED = 'models/pytorch/imagenet/resnet50-19c8e357.pth'
 config.NETWORK.NUM_JOINTS = 20
-config.NETWORK.HEATMAP_SIZE = np.array([80, 80])
 config.NETWORK.IMAGE_SIZE = np.array([320, 320])
+config.NETWORK.HEATMAP_SIZE = np.array([80, 80])
 config.NETWORK.SIGMA = 2
 config.NETWORK.TARGET_TYPE = 'gaussian'
 config.NETWORK.AGGRE = True
@@ -135,7 +135,8 @@ config.CAM_FUSION.IN_VIEW_FUSION = False
 config.CAM_FUSION.XVIEW_SELF_FUSION = False
 config.CAM_FUSION.XVIEW_FUSION = False
 
-config.SELECTED_VIEWS = [0,2,4,6]
+config.SELECTED_VIEWS = [0,7]
+config.CHOOSE_SKELETON = 'self'
 
 
 def _update_dict(k, v):

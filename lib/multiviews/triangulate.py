@@ -22,6 +22,7 @@ def build_multi_camera_system(cameras):
     pymvg_cameras = []
     for (name, camera) in cameras:
         R, T, f, c, k, p = unfold_camera_param(camera)
+        # print('f', f, 'c', c, 'k', k, 'p', p)
         camera_matrix = np.array(
             [[f, 0, c[0]], [0, f, c[1]], [0, 0, 1]], dtype=float)
         proj_matrix = np.zeros((3, 4))
